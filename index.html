@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>My Nika, My Kitty — Minesweeper 💗</title>
+  <meta name="theme-color" content="#ff69b4" />
+
+  <style>
+    :root{
+      --bg1:#1a0013;
+      --bg2:#2b0030;
+      --accent:#ff5fb7;
+      --accent2:#ff88cf;
+      --hot:#ff2f9b;
+
+      --card:#140014cc;
+      --glass:#ffffff10;
+      --glass2:#ffffff18;
+
+      --text:#ffe9f6;
+      --muted:#ffd3ea;
+
+      --good:#6bffbf;
+      --warn:#ffd166;
+      --bad:#ff4d6d;
+
+      --shadow: 0 20px 60px rgba(0,0,0,.45);
+      --radius: 22px;
+
+      --cell: 44px;
+      --gap: 8px;
+
+      --outline: 0 0 0 1px rgba(255,255,255,.14) inset;
+      --glow: 0 0 20px rgba(255,95,183,.25), 0 0 80px rgba(255,95,183,.12);
+    }
+
+    /* Themes (override variables) */
+    [data-theme="pink"]{
+      --bg1:#180012;
+      --bg2:#2a002f;
+      --accent:#ff5fb7;
+      --accent2:#ff88cf;
+      --hot:#ff2f9b;
+      --glow: 0 0 22px rgba(255,95,183,.28), 0 0 90px rgba(255,95,183,.12);
+    }
+    [data-theme="lavender"]{
+      --bg1:#0f0620;
+      --bg2:#1b0c36;
+      --accent:#c983ff;
+      --accent2:#e3b7ff;
+      --hot:#9d5cff;
+      --glow: 0 0 22px rgba(201,131,255,.28), 0 0 90px rgba(201,131,255,.12);
+      --muted:#efd7ff;
+      --text:#fff1ff;
+    }
+    [data-theme="cherry"]{
+      --bg1:#0f0010;
+      --bg2:#260015;
+      --accent:#ff4d7d;
+      --accent2:#ff94ad;
+      --hot:#ff1f57;
+      --glow: 0 0 22px rgba(255,77,125,.28), 0 0 90px rgba(255,77,125,.12);
+      --muted:#ffd0dc;
+      --text:#fff0f5;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+       margin:0;
+  font-family: "Fredoka", ui-rounded, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  color:var(--text);
+  overflow-x:hidden;
+      background:
+        radial-gradient(1200px 700px at 20% 10%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 60%),
+        radial-gradient(900px 600px at 80% 20%, color-mix(in srgb, var(--accent2) 16%, transparent), transparent 60%),
+        radial-gradient(700px 500px at 50% 90%, color-mix(in srgb, var(--hot) 14%, transparent), transparent 55%),
+        linear-gradient(180deg, var(--bg2), var(--bg1));
+    }
+
+    /* soft animated grain */
+    body::before{
+      content:"";
+      position:fixed; inset:0;
+      background:
+        radial-gradient(circle at 10% 30%, rgba(255,255,255,.035) 0 1px, transparent 2px) 0 0/24px 24px,
+        radial-gradient(circle at 70% 60%, rgba(255,255,255,.03) 0 1px, transparent 2px) 0 0/28px 28px;
+      opacity:.55;
+      pointer-events:none;
+      mix-blend-mode: overlay;
+      animation: drift 9s linear infinite;
+    }
+    @keyframes drift{
+      0%{transform:translate3d(0,0,0)}
+      100%{transform:translate3d(-20px,18px,0)}
+    }
+
+    .hearts{
+      position:fixed; inset:0;
+      pointer-events:none;
+      overflow:hidden;
+      z-index:0;
+    }
+    .heart{
+      position:absolute;
+      width:12px; height:12px;
+      transform: rotate(45deg);
+      opacity:.0;
+      filter: drop-shadow(0 10px 12px rgba(0,0,0,.35));
+      animation: floatUp linear forwards;
+    }
+    .heart::before, .heart::after{
+      content:"";
+      position:absolute;
+      width:12px; height:12px;
+      background: inherit;
+      border-radius:50%;
+    }
+    .heart::before{left:-6px}
+    .heart::after{top:-6px}
+    @keyframes floatUp{
+      0%{transform:translate3d(0,20px,0) rotate(45deg) scale(.9); opacity:0}
+      10%{opacity:.85}
+      100%{transform:translate3d(0,-120vh,0) rotate(45deg) scale(1.35); opacity:0}
+    }
+
+    .wrap{
+      position:relative;
+      z-index:1;
+      min-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px 14px 26px;
+      padding-bottom: calc(26px + env(safe-area-inset-bottom));
+    }
+
+    .app{
+      width:min(920px, 100%);
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:16px;
+    }
+
+    @media (max-width: 900px){
+      .app{grid-template-columns:1fr; gap:14px}
+      :root{ --cell: 42px; --gap: 8px; }
+    }
+    @media (max-width: 380px){
+      :root{ --cell: 38px; --gap: 7px; }
+    }
+
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+      position:relative;
+    }
+
+    .panel::after{
+      content:"";
+      position:absolute; inset:-1px;
+      background: radial-gradient(700px 250px at 20% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 55%);
+      pointer-events:none;
+      opacity:.9;
+    }
+
+    .top{
+      padding:16px 16px 12px;
+      position:relative;
+      z-index:1;
+    }
+
+    .brand{
+      display:flex; align-items:center; gap:12px;
+    }
+
+    .logo{
+      width:46px; height:46px; border-radius:14px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 55%),
+        linear-gradient(135deg, color-mix(in srgb, var(--accent) 95%, white 5%), color-mix(in srgb, var(--accent2) 55%, transparent));
+      box-shadow: var(--glow);
+      border: 1px solid rgba(255,255,255,.18);
+      display:grid; place-items:center;
+      flex:0 0 auto;
+      overflow:hidden;
+      position:relative;
+    }
+    .logo img{
+      width:100%; height:100%;
+      object-fit:cover;
+      opacity:.28;
+      transform: scale(1.08);
+      filter: saturate(1.2) contrast(1.05);
+    }
+    .logo .mark{
+      position:absolute; inset:0;
+      display:grid; place-items:center;
+      font-size:22px;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,.35));
+    }
+
+    .title h1{
+  margin:0;
+  font-family: "Cherry Bomb One", "Fredoka", ui-rounded, system-ui;
+  font-size: 20px;
+  letter-spacing: .4px;
+  line-height: 1.08;
+
+  /* “candy gradient” + brilho leve */
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 92%, white 8%),
+    color-mix(in srgb, var(--accent2) 85%, white 15%),
+    color-mix(in srgb, var(--hot) 85%, white 15%),
+    color-mix(in srgb, var(--accent2) 85%, white 15%),
+    color-mix(in srgb, var(--accent) 92%, white 8%)
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+  animation: candyShine 4.8s ease-in-out infinite;
+}
+
+@keyframes candyShine{
+  0%{background-position: 0% 50%}
+  50%{background-position: 100% 50%}
+  100%{background-position: 0% 50%}
+}
+
+.title p{
+  margin:4px 0 0;
+  font-family: "Fredoka", ui-rounded, system-ui;
+  color: var(--muted);
+  font-size: 13px;
+  opacity:.95;
+}
+    .title p{
+      margin:4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      opacity:.95;
+    }
+
+    .stats{
+      margin-top:12px;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 420px){
+      .stats{grid-template-columns: 1fr 1fr; }
+    }
+
+    .chip{
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      padding:10px 10px;
+      box-shadow: var(--outline);
+      position:relative;
+      overflow:hidden;
+    }
+    .chip::before{
+      content:"";
+      position:absolute; inset:-1px;
+      background: radial-gradient(220px 80px at 30% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%);
+      opacity:.9;
+      pointer-events:none;
+    }
+    .chip .k{font-size:11px; color:var(--muted); opacity:.95}
+    .chip .v{margin-top:2px; font-size:16px; font-weight:800; letter-spacing:.2px}
+
+    .controls{
+      margin-top:10px;
+      display:flex; gap:10px; flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .btn, select{
+      -webkit-tap-highlight-color: transparent;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.07);
+      color: var(--text);
+      padding: 10px 12px;
+      font-weight: 750;
+      letter-spacing: .15px;
+      box-shadow: 0 10px 20px rgba(0,0,0,.25), var(--outline);
+      cursor:pointer;
+      transition: transform .12s ease, filter .12s ease, opacity .12s ease;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    select{
+      appearance:none;
+      padding-right:34px;
+      background-image:
+        linear-gradient(45deg, transparent 50%, rgba(255,255,255,.85) 50%),
+        linear-gradient(135deg, rgba(255,255,255,.85) 50%, transparent 50%),
+        linear-gradient(to right, transparent, transparent);
+      background-position:
+        calc(100% - 18px) calc(50% - 2px),
+        calc(100% - 12px) calc(50% - 2px),
+        calc(100% - 2.2em) 0.5em;
+      background-size: 6px 6px, 6px 6px, 1px 1.5em;
+      background-repeat: no-repeat;
+    }
+    .btn:active{transform: translateY(1px) scale(.99)}
+    .btn.primary{
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 95%, white 5%), color-mix(in srgb, var(--accent2) 45%, transparent));
+      border-color: rgba(255,255,255,.22);
+      box-shadow: var(--glow), 0 14px 30px rgba(0,0,0,.30);
+    }
+    .btn.ghost{
+      background: rgba(0,0,0,.22);
+    }
+    .btn.off{
+      opacity:.62;
+      filter: saturate(.75);
+    }
+
+    .hint{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+      opacity:.95;
+    }
+
+    .boardWrap{
+      padding: 14px 14px 16px;
+      position:relative;
+      z-index:1;
+    }
+
+    .boardHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .boardHeader .msg{
+      font-size:12.5px;
+      color: var(--muted);
+      line-height:1.2;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius: 16px;
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow: var(--outline);
+      font-size:12.5px;
+      color: var(--text);
+      user-select:none;
+      white-space:nowrap;
+    }
+    .dot{
+      width:9px;height:9px;border-radius:99px;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+    .dot.good{background: var(--good); box-shadow: 0 0 0 6px rgba(107,255,191,.12)}
+    .dot.bad{background: var(--bad); box-shadow: 0 0 0 6px rgba(255,77,109,.10)}
+    .dot.warn{background: var(--warn); box-shadow: 0 0 0 6px rgba(255,209,102,.10)}
+
+    .board{
+      display:grid;
+      gap: var(--gap);
+      user-select:none;
+      touch-action: manipulation;
+      padding: 12px;
+      border-radius: 20px;
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: var(--outline);
+      position:relative;
+      overflow:hidden;
+    }
+    .board::before{
+      content:"";
+      position:absolute; inset:-2px;
+      background: radial-gradient(700px 280px at 50% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%);
+      pointer-events:none;
+      opacity:.9;
+    }
+
+    .cell{
+      width: var(--cell);
+      height: var(--cell);
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      font-weight: 900;
+      font-size: 15px;
+      position:relative;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      background:
+        radial-gradient(circle at 30% 25%, rgba(255,255,255,.16), transparent 58%),
+        linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow: 0 12px 18px rgba(0,0,0,.22), var(--outline);
+      transition: transform .08s ease, filter .2s ease, background .2s ease;
+      z-index:1;
+    }
+    .cell:active{transform: translateY(1px) scale(.985)}
+    .cell.revealed{
+      cursor:default;
+      background:
+        radial-gradient(circle at 25% 20%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%),
+        linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,.10));
+      border-color: rgba(255,255,255,.10);
+      box-shadow: 0 10px 14px rgba(0,0,0,.18), var(--outline);
+    }
+    .cell.flagged::after{
+      content:"🚩";
+      position:absolute;
+      font-size: 16px;
+      filter: drop-shadow(0 8px 10px rgba(0,0,0,.35));
+    }
+
+    .cell.mine.revealed{
+      background:
+        radial-gradient(circle at 35% 30%, rgba(255,77,109,.30), transparent 60%),
+        linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.12));
+      border-color: rgba(255,77,109,.35);
+      box-shadow: 0 0 0 1px rgba(255,77,109,.25) inset, 0 16px 40px rgba(255,77,109,.12);
+    }
+    .cell.mine.revealed::after{
+      content:"💣";
+      position:absolute;
+      font-size: 16px;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,.35));
+    }
+
+    .sparkle{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      opacity:0;
+      transform: scale(.9);
+    }
+    .cell.revealed .sparkle{
+      opacity:1;
+      animation: pop .35s ease both;
+    }
+    @keyframes pop{
+      0%{transform:scale(.75); opacity:0}
+      100%{transform:scale(1); opacity:1}
+    }
+    .sparkle::before, .sparkle::after{
+      content:"";
+      position:absolute;
+      width:7px;height:7px;border-radius:99px;
+      background: color-mix(in srgb, var(--accent2) 85%, white 15%);
+      box-shadow:
+        0 0 0 6px color-mix(in srgb, var(--accent2) 10%, transparent),
+        0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
+      filter: blur(.1px);
+      opacity:.9;
+    }
+    .sparkle::before{left:10px; top:10px}
+    .sparkle::after{right:12px; bottom:12px; background: color-mix(in srgb, var(--accent) 85%, white 15%)}
+
+    .side{
+      padding:16px 16px 16px;
+      position:relative;
+      z-index:1;
+    }
+
+    .card{
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 18px;
+      padding: 14px 14px;
+      box-shadow: var(--outline);
+    }
+
+    .card h2{
+      margin:0 0 8px;
+      font-size: 15px;
+      letter-spacing:.2px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .small{
+      margin:0;
+      font-size:12.5px;
+      color: var(--muted);
+      line-height:1.45;
+    }
+
+    .divider{height:10px}
+
+    .bestBox{
+      display:grid;
+      gap:8px;
+      margin-top:10px;
+    }
+    .bestLine{
+      display:flex; justify-content:space-between; gap:10px;
+      font-size:12.8px;
+      color: var(--muted);
+    }
+    .bestLine b{color:var(--text)}
+
+    .signature{
+      margin-top:14px;
+      text-align:center;
+      font-size: 12.5px;
+      color: var(--muted);
+      opacity:.95;
+    }
+    .signature .name{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      box-shadow: var(--outline), 0 16px 30px rgba(0,0,0,.25);
+    }
+
+    /* sticker gallery */
+    .stickers{
+      margin-top:12px;
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:8px;
+    }
+    .st{
+      border-radius: 16px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      box-shadow: var(--outline);
+      height:84px;
+      position:relative;
+    }
+    .st img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      filter: saturate(1.12) contrast(1.06);
+      transform: scale(1.05);
+    }
+    .st::after{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(220px 70px at 30% 0%, rgba(255,255,255,.16), transparent 55%);
+      pointer-events:none;
+      opacity:.8;
+    }
+
+    /* story list */
+    .storyList{
+      display:grid;
+      gap:8px;
+      margin-top:10px;
+    }
+    .storyItem{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      padding:10px 10px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.20);
+      box-shadow: var(--outline);
+    }
+    .storyBadge{
+      width:34px;height:34px;
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow: var(--outline);
+      flex:0 0 auto;
+      font-size:16px;
+    }
+    .storyText{
+      font-size:12.5px;
+      color: var(--muted);
+      line-height:1.35;
+    }
+    .storyText b{color:var(--text)}
+    .locked{
+      opacity:.55;
+      filter:saturate(.7);
+    }
+
+    /* overlay modal */
+    .overlay{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index:50;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .overlay.show{display:flex}
+    .modal{
+      width:min(560px, 100%);
+      border-radius: 22px;
+      border:1px solid rgba(255,255,255,.14);
+      background:
+        radial-gradient(700px 240px at 20% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      box-shadow: var(--shadow);
+      padding: 16px 16px 14px;
+      position:relative;
+      overflow:hidden;
+    }
+    .modal h3{
+      margin:0 0 8px;
+      font-size: 18px;
+      letter-spacing:.2px;
+    }
+    .modal p{
+      margin:0 0 12px;
+      color: var(--muted);
+      line-height:1.45;
+      font-size: 13.5px;
+      white-space: pre-line;
+    }
+    .modal .row{
+      display:flex; gap:10px; flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .shake{
+      animation: shake .45s ease both;
+    }
+    @keyframes shake{
+      0%{transform:translateX(0)}
+      20%{transform:translateX(-10px)}
+      40%{transform:translateX(10px)}
+      60%{transform:translateX(-7px)}
+      80%{transform:translateX(7px)}
+      100%{transform:translateX(0)}
+    }
+
+    .modalHero{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom:10px;
+    }
+    .heroImg{
+      width:64px;
+      height:64px;
+      border-radius: 18px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      box-shadow: var(--outline), var(--glow);
+      flex:0 0 auto;
+      position:relative;
+    }
+    .heroImg img{
+      width:100%; height:100%;
+      object-fit:cover;
+      transform: scale(1.06);
+      filter: saturate(1.12) contrast(1.06);
+    }
+    .heroImg::after{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(120px 50px at 30% 0%, rgba(255,255,255,.16), transparent 60%);
+      pointer-events:none;
+    }
+
+    /* confetti canvas */
+    #confetti{
+      position:fixed; inset:0;
+      pointer-events:none;
+      z-index:45;
+      display:none;
+    }
+
+    .footerNote{
+      margin-top:10px;
+      font-size:12px;
+      color: rgba(255,233,246,.75);
+    }
+    .footerNote b{color: var(--accent2)}
+
+    /* number colors */
+    .n1{color:#9be7ff}
+    .n2{color:#7dffb2}
+    .n3{color:#ffd1a1}
+    .n4{color:#cbb3ff}
+    .n5{color:#ff9ad5}
+    .n6{color:#a3ffd8}
+    .n7{color:#fff0a6}
+    .n8{color:#ffb3b3}
+  </style>
+</head>
+
+<body data-theme="pink">
+  <canvas id="confetti"></canvas>
+  <div class="hearts" id="hearts"></div>
+
+  <div class="wrap">
+    <div class="app">
+      <!-- LEFT: GAME -->
+      <section class="panel">
+        <div class="top">
+          <div class="brand">
+            <div class="logo" aria-hidden="true">
+              <img id="logoBg" src="assets/image/01.gif" alt="" />
+              <div class="mark"></div>
+            </div>
+            <div class="title">
+              <h1>My Nika, My Kitty — Minesweeper 💗</h1>
+              <p>A little therapy game from Felipe 🇧🇷 to Nika 🇷🇺</p>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="chip">
+              <div class="k">Score</div>
+              <div class="v" id="score">0</div>
+            </div>
+            <div class="chip">
+              <div class="k">Time</div>
+              <div class="v" id="time">00:00</div>
+            </div>
+            <div class="chip">
+              <div class="k">Mines</div>
+              <div class="v"><span id="minesLeft">0</span></div>
+            </div>
+          </div>
+
+          <div class="controls">
+            <button class="btn primary" id="newGameBtn">New game ✨</button>
+
+            <select id="difficulty" title="Difficulty">
+              <option value="easy">Easy (9×9, 10)</option>
+              <option value="medium" selected>Medium (12×12, 22)</option>
+              <option value="hard">Hard (16×16, 40)</option>
+            </select>
+
+            <select id="theme" title="Theme">
+              <option value="pink" selected>Theme: Pink 🎀</option>
+              <option value="lavender">Theme: Lavender 💜</option>
+              <option value="cherry">Theme: Dark Cherry 🍒</option>
+            </select>
+
+            <button class="btn ghost" id="soundBtn" title="Sound effects">SFX: ON 🔊</button>
+            <button class="btn ghost off" id="musicBtn" title="Background music">Music: OFF 🎧</button>
+            <button class="btn ghost" id="howBtn">How to play</button>
+          </div>
+
+          <div class="hint">
+            Tap to reveal. Long press to place a flag. <br/>
+            Best score is saved on this device. Kitty Story unlocks when you beat your record 💗
+          </div>
+        </div>
+
+        <div class="boardWrap">
+          <div class="boardHeader">
+            <div class="msg" id="statusMsg">Touch a tile, my Kitty 🩷</div>
+            <div class="pill" id="statePill"><span class="dot warn" id="stateDot"></span><span id="stateText">Ready</span></div>
+          </div>
+
+          <div class="board" id="board" aria-label="Minesweeper board"></div>
+
+          <div class="footerNote">
+            Tip: If you want a calmer vibe, pick Easy and just breathe. <b>You’ve got this, my Nika.</b>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: INFO -->
+      <aside class="panel">
+        <div class="side">
+          <div class="card">
+            <h2>My Kitty’s best score 💎</h2>
+            <p class="small">Only the best score is stored (LocalStorage). Beat your record to unlock Kitty Story letters.</p>
+            <div class="bestBox" id="bestBox">
+              <div class="bestLine"><span>Best score</span><b id="bestScore">—</b></div>
+              <div class="bestLine"><span>Date</span><b id="bestDate">—</b></div>
+              <div class="bestLine"><span>Mode</span><b id="bestMode">—</b></div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="card">
+            <h2>Kitty Story 📜</h2>
+            <p class="small">Short letters from Felipe → Nika. Unlock a new one whenever you set a NEW BEST score.</p>
+
+            <div class="storyList" id="storyList"></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="card">
+            <h2>Stickers 🎀</h2>
+            <p class="small">Little pieces of “my Kitty” energy. They change with your wins and losses 💗</p>
+
+            <div class="stickers">
+              <div class="st"><img src="assets/image/01.gif" alt="sticker 01"></div>
+              <div class="st"><img src="assets/image/02.gif" alt="sticker 02"></div>
+              <div class="st"><img src="assets/image/03.gif" alt="sticker 03"></div>
+            </div>
+
+            <div class="stickers" style="margin-top:8px">
+              <div class="st"><img src="assets/image/01.png" alt="icon 01"></div>
+              <div class="st"><img src="assets/image/02.png" alt="icon 02"></div>
+              <div class="st"><img src="assets/image/03.png" alt="icon 03"></div>
+            </div>
+          </div>
+
+          <div class="signature">
+            <span class="name">From Felipe 🇧🇷 to Nika 🇷🇺</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- MODAL -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true">
+    <div class="modal" id="modal">
+      <div class="modalHero">
+        <div class="heroImg"><img id="modalImg" src="assets/image/01.gif" alt="sticker"/></div>
+        <div style="min-width:0">
+          <h3 id="modalTitle">Title</h3>
+          <div style="color:var(--muted); font-size:12.5px; line-height:1.2; opacity:.95" id="modalSub">My Nika, my Kitty 🩷</div>
+        </div>
+      </div>
+      <p id="modalText">Text</p>
+      <div class="row">
+        <button class="btn ghost" id="closeBtn">Close</button>
+        <button class="btn primary" id="playAgainBtn">Play again ✨</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------
+    // My Nika, My Kitty — Minesweeper (Enhanced)
+    // - Kitty Story mode (letters unlock on new best)
+    // - Themes: pink / lavender / cherry
+    // - Sounds from assets/sound/
+    // - Stickers from assets/image/
+    // -------------------------------------------
+
+    const boardEl = document.getElementById("board");
+    const scoreEl = document.getElementById("score");
+    const timeEl = document.getElementById("time");
+    const minesLeftEl = document.getElementById("minesLeft");
+    const statusMsgEl = document.getElementById("statusMsg");
+    const newGameBtn = document.getElementById("newGameBtn");
+    const difficultyEl = document.getElementById("difficulty");
+    const themeEl = document.getElementById("theme");
+
+    const howBtn = document.getElementById("howBtn");
+    const soundBtn = document.getElementById("soundBtn");
+    const musicBtn = document.getElementById("musicBtn");
+
+    const overlay = document.getElementById("overlay");
+    const modal = document.getElementById("modal");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalSub = document.getElementById("modalSub");
+    const modalText = document.getElementById("modalText");
+    const modalImg = document.getElementById("modalImg");
+    const closeBtn = document.getElementById("closeBtn");
+    const playAgainBtn = document.getElementById("playAgainBtn");
+
+    const stateDot = document.getElementById("stateDot");
+    const stateText = document.getElementById("stateText");
+
+    const bestScoreEl = document.getElementById("bestScore");
+    const bestDateEl = document.getElementById("bestDate");
+    const bestModeEl = document.getElementById("bestMode");
+
+    const storyListEl = document.getElementById("storyList");
+    const heartsEl = document.getElementById("hearts");
+
+    const confettiCanvas = document.getElementById("confetti");
+    const confettiCtx = confettiCanvas.getContext("2d");
+
+    const logoBg = document.getElementById("logoBg");
+
+    // Storage keys
+    const STORAGE_BEST = "nika_minesweeper_best_v2";
+    const STORAGE_PREFS = "nika_minesweeper_prefs_v2";
+    const STORAGE_STORY = "nika_minesweeper_story_v2";
+
+    // Assets
+    const STICKERS = [
+      "assets/image/01.gif",
+      "assets/image/02.gif",
+      "assets/image/03.gif",
+      "assets/image/01.png",
+      "assets/image/02.png",
+      "assets/image/03.png",
+    ];
+
+    const SOUND_FILES = {
+      click: "assets/sound/click.mp3",
+      boom:  "assets/sound/boom.mp3",
+      win:   "assets/sound/win.mp3",
+      loose: "assets/sound/loose.mp3",
+      music: "assets/sound/music.mp3",
+    };
+
+    // Kitty Story (unlock by NEW BEST score)
+    const KITTY_STORY = [
+      {
+        title: "Letter 1 — A tiny start 🎀",
+        text:
+`My Nika, my Kitty 💗
+
+This game is a small gesture from me to you.
+A soft place where you can breathe, focus, and feel calm.
+
+Whenever you tap a tile, remember:
+I’m cheering for you — always.
+
+Love,
+Felipe 🇧🇷 → Nika 🇷🇺`
+      },
+      {
+        title: "Letter 2 — You’re safe here 💗",
+        text:
+`My Kitty,
+
+If the world feels loud, come here.
+One tile. One breath. One calm step.
+
+Even if you explode a bomb,
+you didn’t lose — you explored.
+
+I’m proud of you.
+Felipe`
+      },
+      {
+        title: "Letter 3 — My favorite focus ✨",
+        text:
+`Nika,
+
+You have a beautiful kind of focus.
+The kind that turns chaos into calm.
+
+Keep playing when you want peace.
+I’ll be here in the background,
+like a warm hand on your shoulder.
+
+Your Brazilian,
+Felipe 🇧🇷`
+      },
+      {
+        title: "Letter 4 — My Kitty, my home 🩷",
+        text:
+`My Nika,
+
+You’re not just good at this game.
+You’re good at getting back up.
+
+If you ever doubt yourself,
+read this and remember:
+
+You are loved.
+You are enough.
+And you are my Kitty.
+
+Felipe`
+      },
+      {
+        title: "Letter 5 — Always yours 💎",
+        text:
+`My love,
+
+You keep growing, and it’s beautiful to watch.
+Every record you beat is proof:
+you can do hard things gently.
+
+Thank you for existing in my world.
+From Felipe 🇧🇷 to Nika 🇷🇺 — always.`
+      }
+    ];
+
+    const WIN_PHRASES = [
+      "My Kitty, you did it! That was pure focus and calm 🩷",
+      "Nikaaaa! You’re glowing. Keep going, my love ✨",
+      "Perfect play. Therapy level: legendary 💎",
+      "That win was so clean. I’m proud of you, my Nika 🇷🇺💗",
+      "You’re stronger than every bomb on this board 😼🎀",
+      "My Brazilian heart is cheering for my Russian Kitty 🥹🇧🇷🇷🇺"
+    ];
+
+    const LOSE_PHRASES = [
+      "Oops… boom. But hey, my Kitty, you’re still amazing 🩷",
+      "It’s okay. Breathe. New game, new peace ✨",
+      "Even therapy has explosions sometimes 😼💣",
+      "No worries, my Nika. Let’s try again gently 🎀",
+      "You didn’t fail. You explored. That’s brave 💗",
+      "I’m still proud of you. Always. Again? 🩷"
+    ];
+
+    const TIP_PHRASES = [
+      "Try long pressing for flags. It feels satisfying 😼",
+      "Start with corners when you want a calmer flow 🩷",
+      "If you feel stressed, switch to Easy and just enjoy 🎀",
+      "Your focus is beautiful. One tile at a time ✨",
+      "You’re safe here. This is your cozy game 💗"
+    ];
+
+    const MODES = {
+      easy:   { w: 9,  h: 9,  mines: 10 },
+      medium: { w: 12, h: 12, mines: 22 },
+      hard:   { w: 16, h: 16, mines: 40 }
+    };
+
+    // Game state
+    let W=12, H=12, MINES=22;
+    let grid = [];
+    let firstClick = true;
+    let gameOver = false;
+    let startedAt = null;
+    let timerId = null;
+
+    let score = 0;
+    let revealedCount = 0;
+    let flagsCount = 0;
+
+    // score tuning
+    const POINT_REVEAL = 10;
+    const POINT_FLAG_BONUS = 12;
+    const WIN_BONUS_BASE = 1500;
+
+    // Preferences
+    const defaultPrefs = {
+      theme: "pink",
+      sfxOn: true,
+      musicOn: false
+    };
+    let prefs = {...defaultPrefs};
+
+    // Story progress
+    function getStoryProgress(){
+      const raw = localStorage.getItem(STORAGE_STORY);
+      if(!raw) return { unlocked: 0 };
+      try{
+        const d = JSON.parse(raw);
+        return { unlocked: Math.max(0, Math.min(KITTY_STORY.length, Number(d.unlocked || 0))) };
+      }catch{
+        return { unlocked: 0 };
+      }
+    }
+    function setStoryProgress(unlocked){
+      const safe = Math.max(0, Math.min(KITTY_STORY.length, unlocked));
+      localStorage.setItem(STORAGE_STORY, JSON.stringify({ unlocked: safe }));
+      renderStoryList();
+    }
+
+    function renderStoryList(){
+      const p = getStoryProgress();
+      storyListEl.innerHTML = "";
+
+      KITTY_STORY.forEach((letter, idx)=>{
+        const unlocked = idx < p.unlocked;
+        const item = document.createElement("div");
+        item.className = "storyItem" + (unlocked ? "" : " locked");
+
+        const badge = document.createElement("div");
+        badge.className = "storyBadge";
+        badge.textContent = unlocked ? "💌" : "🔒";
+
+        const text = document.createElement("div");
+        text.className = "storyText";
+        text.innerHTML = unlocked
+          ? `<b>${letter.title}</b><br/>Tap to read`
+          : `<b>${letter.title}</b><br/>Unlock by setting a NEW BEST score`;
+
+        item.appendChild(badge);
+        item.appendChild(text);
+
+        item.addEventListener("click", ()=>{
+          if(!unlocked){
+            pulseModal("Locked 🔒", "Beat your best score to unlock this letter, my Kitty 💗", pickSticker());
+            return;
+          }
+          pulseModal(letter.title, letter.text, pickSticker(), "Kitty Story 📜");
+        });
+
+        storyListEl.appendChild(item);
+      });
+    }
+
+    // --------------------
+    // Audio manager (mobile-friendly)
+    // --------------------
+    const Audio = {
+      unlocked: false,
+      sfx: {
+        click: new window.Audio(SOUND_FILES.click),
+        boom:  new window.Audio(SOUND_FILES.boom),
+        win:   new window.Audio(SOUND_FILES.win),
+        loose: new window.Audio(SOUND_FILES.loose),
+      },
+      music: new window.Audio(SOUND_FILES.music),
+
+      init(){
+        // keep gentle defaults
+        this.music.loop = true;
+        this.music.volume = 0.35;
+
+        this.sfx.click.volume = 0.45;
+        this.sfx.boom.volume  = 0.55;
+        this.sfx.win.volume   = 0.55;
+        this.sfx.loose.volume = 0.50;
+
+        // preload hint
+        Object.values(this.sfx).forEach(a => { a.preload = "auto"; });
+        this.music.preload = "auto";
+      },
+
+      async unlock(){
+        // iOS/Chrome mobile needs a user gesture before audio works
+        if(this.unlocked) return;
+        this.unlocked = true;
+
+        try{
+          // tiny silent play/pause to "warm up"
+          this.music.muted = true;
+          await this.music.play();
+          this.music.pause();
+          this.music.currentTime = 0;
+          this.music.muted = false;
+        }catch{
+          // ignore
+        }
+      },
+
+      playSfx(name){
+        if(!prefs.sfxOn) return;
+        const base = this.sfx[name];
+        if(!base) return;
+
+        // clone to allow overlap without cutting
+        try{
+          const a = base.cloneNode(true);
+          a.volume = base.volume;
+          a.play().catch(()=>{});
+        }catch{
+          base.currentTime = 0;
+          base.play().catch(()=>{});
+        }
+      },
+
+      async setMusic(on){
+        prefs.musicOn = !!on;
+        savePrefs();
+        updateAudioButtons();
+
+        if(!prefs.musicOn){
+          try{ this.music.pause(); }catch{}
+          return;
+        }
+
+        await this.unlock();
+        try{
+          this.music.currentTime = Math.min(this.music.currentTime, 0.02);
+          await this.music.play();
+        }catch{
+          // If browser blocks, keep OFF visually
+          prefs.musicOn = false;
+          savePrefs();
+          updateAudioButtons();
+        }
+      }
+    };
+
+    // --------------------
+    // Helpers
+    // --------------------
+    function rand(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+    function pickSticker(){ return rand(STICKERS); }
+
+    function setState(kind, text){
+      stateText.textContent = text;
+      stateDot.className = "dot " + (kind || "warn");
+    }
+
+    function fmtTime(ms){
+      const s = Math.max(0, Math.floor(ms/1000));
+      const mm = String(Math.floor(s/60)).padStart(2,"0");
+      const ss = String(s%60).padStart(2,"0");
+      return `${mm}:${ss}`;
+    }
+
+    function nowMs(){ return performance.now() }
+
+    function resizeConfetti(){
+      confettiCanvas.width = window.innerWidth * devicePixelRatio;
+      confettiCanvas.height = window.innerHeight * devicePixelRatio;
+      confettiCtx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    }
+    window.addEventListener("resize", resizeConfetti);
+
+    function pulseModal(title, text, sticker, subtitle="My Nika, my Kitty 🩷"){
+      modalTitle.textContent = title;
+      modalSub.textContent = subtitle;
+      modalText.textContent = text;
+      modalImg.src = sticker;
+      overlay.classList.add("show");
+
+      modal.animate(
+        [{transform:"scale(.98)", filter:"brightness(.98)"},{transform:"scale(1)", filter:"brightness(1)"}],
+        {duration:220, easing:"cubic-bezier(.2,.9,.2,1)"}
+      );
+    }
+
+    function hideModal(){
+      overlay.classList.remove("show");
+      modal.classList.remove("shake");
+    }
+
+    closeBtn.addEventListener("click", hideModal);
+    overlay.addEventListener("click", (e)=>{
+      if(e.target === overlay) hideModal();
+    });
+    playAgainBtn.addEventListener("click", ()=>{
+      hideModal();
+      newGame();
+    });
+
+    howBtn.addEventListener("click", ()=>{
+      Audio.playSfx("click");
+      pulseModal(
+        "How to play 💗",
+        "Tap a tile to reveal it.\nLong press a tile to place or remove a flag.\nClear all safe tiles to win.\n\nKitty Story: whenever you set a NEW BEST score, you unlock a letter from Felipe → Nika 💌",
+        pickSticker(),
+        "Quick guide ✨"
+      );
+    });
+
+    // --------------------
+    // Preferences
+    // --------------------
+    function loadPrefs(){
+      const raw = localStorage.getItem(STORAGE_PREFS);
+      if(!raw) return;
+      try{
+        const d = JSON.parse(raw);
+        prefs = {
+          theme: d.theme ?? defaultPrefs.theme,
+          sfxOn: d.sfxOn ?? defaultPrefs.sfxOn,
+          musicOn: d.musicOn ?? defaultPrefs.musicOn
+        };
+      }catch{}
+    }
+
+    function savePrefs(){
+      localStorage.setItem(STORAGE_PREFS, JSON.stringify(prefs));
+    }
+
+    function applyTheme(theme){
+      document.body.setAttribute("data-theme", theme);
+      prefs.theme = theme;
+      savePrefs();
+
+      // change logo bg slightly for vibe
+      if(theme === "lavender") logoBg.src = "assets/image/02.gif";
+      else if(theme === "cherry") logoBg.src = "assets/image/03.gif";
+      else logoBg.src = "assets/image/01.gif";
+    }
+
+    function updateAudioButtons(){
+      soundBtn.textContent = prefs.sfxOn ? "SFX: ON 🔊" : "SFX: OFF 🔇";
+      soundBtn.classList.toggle("off", !prefs.sfxOn);
+
+      musicBtn.textContent = prefs.musicOn ? "Music: ON 🎧" : "Music: OFF 🎧";
+      musicBtn.classList.toggle("off", !prefs.musicOn);
+    }
+
+    themeEl.addEventListener("change", ()=>{
+      Audio.playSfx("click");
+      applyTheme(themeEl.value);
+      statusMsgEl.textContent = rand(["Theme changed 💗", "Cute vibe updated 🎀", "My Kitty style ✨"]);
+    });
+
+    soundBtn.addEventListener("click", async ()=>{
+      await Audio.unlock();
+      prefs.sfxOn = !prefs.sfxOn;
+      savePrefs();
+      updateAudioButtons();
+      if(prefs.sfxOn) Audio.playSfx("click");
+    });
+
+    musicBtn.addEventListener("click", async ()=>{
+      await Audio.unlock();
+      Audio.playSfx("click");
+      await Audio.setMusic(!prefs.musicOn);
+    });
+
+    // Also unlock audio on first user gesture anywhere
+    ["pointerdown","touchstart","keydown"].forEach(evt=>{
+      window.addEventListener(evt, ()=>Audio.unlock(), {once:true, passive:true});
+    });
+
+    // --------------------
+    // Best score
+    // --------------------
+    function loadBest(){
+      const raw = localStorage.getItem(STORAGE_BEST);
+      if(!raw){
+        bestScoreEl.textContent = "—";
+        bestDateEl.textContent = "—";
+        bestModeEl.textContent = "—";
+        return null;
+      }
+      try{
+        const data = JSON.parse(raw);
+        bestScoreEl.textContent = String(data.bestScore ?? "—");
+        bestDateEl.textContent = data.date ? new Date(data.date).toLocaleString() : "—";
+        bestModeEl.textContent = data.mode ?? "—";
+        return data;
+      }catch{
+        return null;
+      }
+    }
+
+    function saveBestIfNeeded(finalScore){
+      const curMode = difficultyEl.value;
+      const existing = loadBest();
+      const prev = existing?.bestScore ?? -1;
+
+      if(finalScore > prev){
+        const data = { bestScore: finalScore, date: new Date().toISOString(), mode: curMode };
+        localStorage.setItem(STORAGE_BEST, JSON.stringify(data));
+        loadBest();
+        return true;
+      }
+      return false;
+    }
+
+    // --------------------
+    // Game logic
+    // --------------------
+    function setDifficulty(){
+      const m = MODES[difficultyEl.value] || MODES.medium;
+      W=m.w; H=m.h; MINES=m.mines;
+
+      if(W >= 16){
+        document.documentElement.style.setProperty("--cell", "36px");
+        document.documentElement.style.setProperty("--gap", "7px");
+      }else{
+        document.documentElement.style.removeProperty("--cell");
+        document.documentElement.style.removeProperty("--gap");
+      }
+    }
+
+    difficultyEl.addEventListener("change", ()=>{
+      Audio.playSfx("click");
+      newGame();
+    });
+
+    function makeEmptyGrid(){
+      grid = Array.from({length: H}, (_, y) =>
+        Array.from({length: W}, (_, x) => ({
+          x,y,
+          mine:false,
+          revealed:false,
+          flagged:false,
+          adj:0,
+          el:null
+        }))
+      );
+    }
+
+    function neighbors(x,y){
+      const out = [];
+      for(let dy=-1; dy<=1; dy++){
+        for(let dx=-1; dx<=1; dx++){
+          if(dx===0 && dy===0) continue;
+          const nx=x+dx, ny=y+dy;
+          if(nx>=0 && nx<W && ny>=0 && ny<H) out.push(grid[ny][nx]);
+        }
+      }
+      return out;
+    }
+
+    function placeMinesAvoiding(safeCell){
+      const forbidden = new Set();
+      forbidden.add(`${safeCell.x},${safeCell.y}`);
+      for(const n of neighbors(safeCell.x, safeCell.y)){
+        forbidden.add(`${n.x},${n.y}`);
+      }
+
+      let placed = 0;
+      while(placed < MINES){
+        const x = Math.floor(Math.random()*W);
+        const y = Math.floor(Math.random()*H);
+        const key = `${x},${y}`;
+        if(forbidden.has(key)) continue;
+        const c = grid[y][x];
+        if(c.mine) continue;
+        c.mine = true;
+        placed++;
+      }
+
+      for(let y=0;y<H;y++){
+        for(let x=0;x<W;x++){
+          const c = grid[y][x];
+          if(c.mine){ c.adj = 0; continue; }
+          c.adj = neighbors(x,y).filter(n=>n.mine).length;
+        }
+      }
+    }
+
+    function stopTimer(){
+      if(timerId) clearInterval(timerId);
+      timerId = null;
+    }
+
+    function startTimer(){
+      startedAt = nowMs();
+      stopTimer();
+      timerId = setInterval(()=>{
+        if(!startedAt) return;
+        timeEl.textContent = fmtTime(nowMs() - startedAt);
+      }, 250);
+    }
+
+    function resetStats(){
+      score = 0;
+      revealedCount = 0;
+      flagsCount = 0;
+      scoreEl.textContent = "0";
+      timeEl.textContent = "00:00";
+      minesLeftEl.textContent = String(MINES);
+      statusMsgEl.textContent = "Touch a tile, my Kitty 🩷";
+      setState("warn","Ready");
+    }
+
+    function setScore(v){
+      score = Math.max(0, Math.floor(v));
+      scoreEl.textContent = String(score);
+    }
+
+    function addScore(delta){
+      setScore(score + delta);
+    }
+
+    function buildBoard(){
+      boardEl.innerHTML = "";
+      boardEl.style.gridTemplateColumns = `repeat(${W}, var(--cell))`;
+
+      for(let y=0;y<H;y++){
+        for(let x=0;x<W;x++){
+          const cell = grid[y][x];
+
+          const el = document.createElement("button");
+          el.className = "cell";
+          el.setAttribute("aria-label", "tile");
+          el.dataset.x = String(x);
+          el.dataset.y = String(y);
+
+          const sparkle = document.createElement("div");
+          sparkle.className = "sparkle";
+          el.appendChild(sparkle);
+
+          cell.el = el;
+          boardEl.appendChild(el);
+
+          attachCellHandlers(el);
+        }
+      }
+    }
+
+    function attachCellHandlers(el){
+      let pressTimer = null;
+      let longPressed = false;
+
+      const x = Number(el.dataset.x);
+      const y = Number(el.dataset.y);
+
+      const onPressStart = (e)=>{
+        if(gameOver) return;
+        longPressed = false;
+
+        pressTimer = setTimeout(()=>{
+          longPressed = true;
+          toggleFlag(x,y);
+        }, 320);
+      };
+
+      const onPressEnd = (e)=>{
+        if(pressTimer) clearTimeout(pressTimer);
+        pressTimer = null;
+      };
+
+      const onClick = (e)=>{
+        if(gameOver) return;
+        if(longPressed) return;
+
+        revealCell(x,y);
+      };
+
+      el.addEventListener("pointerdown", onPressStart);
+      el.addEventListener("pointerup", onPressEnd);
+      el.addEventListener("pointercancel", onPressEnd);
+      el.addEventListener("pointerleave", onPressEnd);
+      el.addEventListener("click", onClick);
+
+      el.addEventListener("contextmenu", (e)=>e.preventDefault());
+    }
+
+    function toggleFlag(x,y){
+      const c = grid[y][x];
+      if(c.revealed) return;
+
+      Audio.playSfx("click");
+
+      c.flagged = !c.flagged;
+      c.el.classList.toggle("flagged", c.flagged);
+
+      flagsCount += c.flagged ? 1 : -1;
+      minesLeftEl.textContent = String(Math.max(0, MINES - flagsCount));
+
+      statusMsgEl.textContent = c.flagged
+        ? rand(["Flag placed 🎀","Cute flag! 🚩","Marked, my Kitty 💗","Nice catch 😼"])
+        : rand(["Flag removed ✨","Unmarked 💗","Back to exploring 😼","Okay, keep going 🎀"]);
+    }
+
+    function revealCell(x,y){
+      const c = grid[y][x];
+      if(c.revealed || c.flagged) return;
+
+      Audio.playSfx("click");
+
+      if(firstClick){
+        firstClick = false;
+        placeMinesAvoiding(c);
+        startTimer();
+        setState("good","Playing");
+        statusMsgEl.textContent = rand(TIP_PHRASES);
+      }
+
+      if(c.mine){
+        explodeAt(c);
+        return;
+      }
+
+      floodReveal(c);
+      renderNumbers();
+      checkWin();
+    }
+
+    function floodReveal(start){
+      const stack = [start];
+
+      while(stack.length){
+        const c = stack.pop();
+        if(c.revealed || c.flagged) continue;
+
+        c.revealed = true;
+        c.el.classList.add("revealed");
+        revealedCount++;
+
+        addScore(POINT_REVEAL);
+
+        if(c.adj === 0){
+          for(const n of neighbors(c.x, c.y)){
+            if(!n.revealed && !n.mine && !n.flagged) stack.push(n);
+          }
+        }
+      }
+    }
+
+    function renderNumbers(){
+      for(let y=0;y<H;y++){
+        for(let x=0;x<W;x++){
+          const c = grid[y][x];
+          if(!c.revealed) continue;
+
+          if(c.mine){
+            c.el.classList.add("mine");
+            c.el.textContent = "";
+            continue;
+          }
+
+          if(c.adj > 0){
+            c.el.textContent = String(c.adj);
+            c.el.classList.add(`n${Math.min(8,c.adj)}`);
+          }else{
+            c.el.textContent = "";
+          }
+        }
+      }
+    }
+
+    function revealAllMines(){
+      for(let y=0;y<H;y++){
+        for(let x=0;x<W;x++){
+          const c = grid[y][x];
+          if(c.mine){
+            c.revealed = true;
+            c.el.classList.add("revealed","mine");
+          }
+        }
+      }
+    }
+
+    function explodeAt(cell){
+      gameOver = true;
+      stopTimer();
+      setState("bad","Boom");
+
+      Audio.playSfx("boom");
+
+      cell.el.classList.add("revealed","mine");
+      cell.el.classList.add("shake");
+      boardEl.classList.add("shake");
+
+      revealAllMines();
+      renderNumbers();
+
+      const msg = rand(LOSE_PHRASES);
+      const isBest = saveBestIfNeeded(score);
+
+      setTimeout(()=>{
+        boardEl.classList.remove("shake");
+        pulseModal(
+          "Boom 💣 (but you’re still my Kitty)",
+          `${msg}\n\nYour score: ${score}${isBest ? " — NEW BEST! 💎" : ""}\n\nTip: Long press for flags. Calm and steady 💗`,
+          pickSticker(),
+          "Felipe → Nika"
+        );
+      }, 260);
+    }
+
+    function maybeUnlockStoryOnNewBest(){
+      const p = getStoryProgress();
+      if(p.unlocked >= KITTY_STORY.length) return null;
+
+      const next = KITTY_STORY[p.unlocked];
+      setStoryProgress(p.unlocked + 1);
+      return next;
+    }
+
+    function checkWin(){
+      const safeTiles = (W*H) - MINES;
+      if(revealedCount !== safeTiles) return;
+
+      gameOver = true;
+      stopTimer();
+
+      const elapsed = startedAt ? (nowMs() - startedAt) : 0;
+      const secs = Math.max(1, Math.floor(elapsed/1000));
+      const speedBonus = Math.max(0, Math.floor(WIN_BONUS_BASE - (secs * 6)));
+      const flagBonus = Math.max(0, (MINES - Math.max(0, MINES - flagsCount))) * POINT_FLAG_BONUS;
+
+      addScore(speedBonus + flagBonus);
+
+      setState("good","Won");
+      statusMsgEl.textContent = "You cleared it, my Nika 💗";
+
+      const msg = rand(WIN_PHRASES);
+      const final = score;
+
+      Audio.playSfx("win");
+      launchConfetti();
+
+      const isBest = saveBestIfNeeded(final);
+
+      // If NEW BEST: unlock a story letter & show it inside modal
+      let storyExtra = "";
+      let storyLetter = null;
+
+      if(isBest){
+        storyLetter = maybeUnlockStoryOnNewBest();
+        storyExtra = storyLetter
+          ? `\n\n💌 Kitty Story unlocked:\n${storyLetter.title}\n\n${storyLetter.text}`
+          : `\n\n💌 Kitty Story:\nAll letters unlocked. My Kitty, you completed the story 💗`;
+      }
+
+      setTimeout(()=>{
+        pulseModal(
+          "You won, my Nika! 💗✨",
+          `${msg}\n\nFinal score: ${final}${isBest ? " — NEW BEST! 💎" : ""}${storyExtra}`,
+          pickSticker(),
+          "Felipe → Nika"
+        );
+      }, 180);
+    }
+
+    function newGame(){
+      setDifficulty();
+      makeEmptyGrid();
+      buildBoard();
+
+      firstClick = true;
+      gameOver = false;
+      startedAt = null;
+      stopTimer();
+
+      resetStats();
+      loadBest();
+      renderStoryList();
+
+      statusMsgEl.textContent = rand([
+        "Ready when you are, my Kitty 🩷",
+        "Let’s play calmly, my Nika 🎀",
+        "A soft start. One tile at a time ✨",
+        "Your therapy moment is here 💗",
+      ]);
+
+      boardEl.animate(
+        [{transform:"scale(.985)", filter:"brightness(.98)"},{transform:"scale(1)", filter:"brightness(1)"}],
+        {duration:260, easing:"cubic-bezier(.2,.9,.2,1)"}
+      );
+    }
+
+    newGameBtn.addEventListener("click", ()=>{
+      Audio.playSfx("click");
+      newGame();
+    });
+
+    // --------------------
+    // Hearts ambience
+    // --------------------
+    function spawnHeart(){
+      const h = document.createElement("div");
+      h.className = "heart";
+      const size = 8 + Math.random()*12;
+      h.style.width = size + "px";
+      h.style.height = size + "px";
+      h.style.left = (Math.random()*100) + "vw";
+      h.style.bottom = (-20 - Math.random()*60) + "px";
+
+      // themed heart colors
+      const c1 = getComputedStyle(document.body).getPropertyValue("--accent").trim() || "rgba(255,95,183,1)";
+      const c2 = getComputedStyle(document.body).getPropertyValue("--accent2").trim() || "rgba(255,136,207,1)";
+      const mix = Math.random() < 0.5 ? c1 : c2;
+
+      // opacity gentle
+      h.style.background = `color-mix(in srgb, ${mix} 70%, rgba(255,255,255,.25))`;
+      const dur = 6 + Math.random()*7;
+      h.style.animationDuration = dur + "s";
+      heartsEl.appendChild(h);
+      setTimeout(()=>h.remove(), (dur*1000)+200);
+    }
+
+    setInterval(()=> {
+      if(document.visibilityState !== "visible") return;
+      if(Math.random() < 0.8) spawnHeart();
+    }, 420);
+
+    // --------------------
+    // Confetti
+    // --------------------
+    let confettiParts = [];
+    let confettiRunning = false;
+
+    function launchConfetti(){
+      resizeConfetti();
+      confettiCanvas.style.display = "block";
+      confettiParts = [];
+
+      const count = 150;
+      for(let i=0;i<count;i++){
+        confettiParts.push({
+          x: Math.random()*window.innerWidth,
+          y: -20 - Math.random()*window.innerHeight*0.3,
+          vx: (Math.random()*2-1) * 1.7,
+          vy: 2.5 + Math.random()*4.2,
+          r: 3 + Math.random()*5,
+          rot: Math.random()*Math.PI*2,
+          vr: (Math.random()*2-1) * 0.22,
+          life: 140 + Math.random()*90,
+          type: Math.random() < 0.24 ? "heart" : "rect"
+        });
+      }
+
+      confettiRunning = true;
+      let frame = 0;
+
+      const step = ()=>{
+        if(!confettiRunning) return;
+        frame++;
+
+        confettiCtx.clearRect(0,0,window.innerWidth,window.innerHeight);
+
+        const accent = getComputedStyle(document.body).getPropertyValue("--accent").trim() || "rgba(255,95,183,1)";
+        const accent2 = getComputedStyle(document.body).getPropertyValue("--accent2").trim() || "rgba(255,136,207,1)";
+
+        for(const p of confettiParts){
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.02;
+          p.rot += p.vr;
+          p.life -= 1;
+
+          if(p.x < -20) p.x = window.innerWidth + 20;
+          if(p.x > window.innerWidth + 20) p.x = -20;
+
+          const alpha = Math.max(0, Math.min(1, p.life/160));
+
+          confettiCtx.save();
+          confettiCtx.globalAlpha = alpha;
+
+          confettiCtx.translate(p.x, p.y);
+          confettiCtx.rotate(p.rot);
+
+          const base = Math.random() < 0.5 ? accent : accent2;
+
+          if(p.type === "heart"){
+            confettiCtx.fillStyle = `color-mix(in srgb, ${base} 70%, rgba(255,255,255,.25))`;
+            confettiCtx.beginPath();
+            confettiCtx.moveTo(0, p.r*0.45);
+            confettiCtx.bezierCurveTo(0, -p.r*0.35, -p.r, -p.r*0.35, -p.r, p.r*0.25);
+            confettiCtx.bezierCurveTo(-p.r, p.r*0.85, 0, p.r*1.05, 0, p.r*1.35);
+            confettiCtx.bezierCurveTo(0, p.r*1.05, p.r, p.r*0.85, p.r, p.r*0.25);
+            confettiCtx.bezierCurveTo(p.r, -p.r*0.35, 0, -p.r*0.35, 0, p.r*0.45);
+            confettiCtx.fill();
+          }else{
+            const w = p.r*1.5, h = p.r*0.9;
+            confettiCtx.fillStyle = `color-mix(in srgb, ${base} 62%, rgba(255,255,255,.25))`;
+            confettiCtx.fillRect(-w/2, -h/2, w, h);
+          }
+
+          confettiCtx.restore();
+        }
+
+        confettiParts = confettiParts.filter(p => p.life > 0 && p.y < window.innerHeight + 60);
+        if(frame > 250 || confettiParts.length === 0){
+          confettiRunning = false;
+          confettiCanvas.style.display = "none";
+          return;
+        }
+        requestAnimationFrame(step);
+      };
+
+      requestAnimationFrame(step);
+    }
+
+    // --------------------
+    // Boot
+    // --------------------
+    Audio.init();
+    loadPrefs();
+
+    // apply prefs to UI
+    themeEl.value = prefs.theme;
+    applyTheme(prefs.theme);
+    updateAudioButtons();
+
+    // don't autoplay music: only start if user toggles ON
+    // but if pref says ON, try after first gesture (some browsers block)
+    if(prefs.musicOn){
+      // show ON button, but actual start will happen on gesture
+      updateAudioButtons();
+      window.addEventListener("pointerdown", ()=>Audio.setMusic(true), {once:true, passive:true});
+    }
+
+    loadBest();
+    renderStoryList();
+    newGame();
+  </script>
+</body>
+</html>
